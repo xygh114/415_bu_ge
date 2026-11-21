@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>动效组件演示 · 不鸽</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 站点的设计 token 全在 styles.css 里，先引它，组件的颜色变量就能吃到 --ink / --lime / --line 等 -->
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/css-loaders.css">
+<style>
+  /* 演示页自己的排版，全部 ld- 前缀，不碰 .cl-* 组件内部规则 */
+  .ld-wrap { max-width: 1120px; margin: 0 auto; padding: 40px 24px 80px; }
+  .ld-title { font-size: 30px; letter-spacing: -.02em; margin: 0 0 6px; }
+  .ld-sub { color: var(--muted); font-size: 13.5px; line-height: 1.7; margin: 0 0 28px; }
+  .ld-sub code { font-family: var(--num); background: var(--line-soft); padding: 1px 5px; border-radius: 4px; }
+  .ld-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; }
+  .ld-card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    padding: 18px 18px 14px; min-height: 250px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .ld-stage {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    background: var(--bg, #F4F1EA); border-radius: 12px; padding: 16px; overflow: hidden;
+    position: relative;
+  }
+  .ld-name { font-size: 14px; font-weight: 700; }
+  .ld-name em { font-style: normal; color: var(--muted-2); font-weight: 500; font-family: var(--num); font-size: 12px; }
+  .ld-vars { color: var(--muted); font-size: 11.5px; line-height: 1.6; font-family: var(--num); }
+  .ld-vars b { color: var(--ink-2); font-weight: 600; }
+  .ld-dark { background: #14161B; }
+  .ld-rule { margin: 34px 0 16px; font-size: 13px; color: var(--muted); }
+  .ld-back { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); text-decoration: none; }
+  .ld-back:hover { color: var(--ink); }
+
+  /* 每个组件只在这里改 --cl-* 变量，组件内部规则一行不动 */
+  .d-glass   { --cl-size: 132px; --cl-color: var(--lime); --cl-color-2: var(--green); --cl-duration: 5s; }
+  .d-typing  { --cl-size: clamp(20px, 4.4vw, 30px); --cl-color: var(--lime); --cl-stroke: var(--ink); --cl-duration: 5s; }
+  .d-water   { --cl-size: 116px; --cl-color: var(--green); --cl-shell: var(--card); --cl-glass: var(--line); }
+  .d-spinner { --cl-size: 62px; --cl-color: var(--lime); --cl-color-2: var(--green); --cl-color-3: var(--amber); --cl-color-4: var(--red); }
+  .d-clip    { --cl-size: 200px; --cl-color: var(--ink); --cl-bg: var(--lime); }
+  .d-squares { --cl-size: 34px; --cl-color: var(--lime); --cl-color-2: var(--green); --cl-line: var(--ink); }
+  .d-count   { --cl-size: 150px; --cl-color: var(--ink); --cl-numbers: 3; --cl-step: 1s; }
+  .d-shadow  { --cl-size: 2.2rem; --cl-color: var(--ink); --cl-shadow: rgb(26 28 34 / .18); }
+  /* 计数器原版是按"整屏"设计的（position: relative + 无尺寸），演示卡里给它一个盒子 */
+  .d-counter { --cl-duration: 4s; --cl-color: var(--ink); --cl-track: var(--line); --cl-num: var(--ink);
+               width: 100%; height: 104px; border-radius: 10px; }
+  .d-ripple  { --cl-size: 150px; --cl-color: var(--green); --cl-line: 2px; }
+</style>
+</head>
+<body>
+<div class="ld-wrap">
+  <a class="ld-back" href="index.html">← 回到「不鸽」</a>
+  <h1 class="ld-title">动效组件演示</h1>
+  <p class="ld-sub">
+    十个组件全部来自 <code>assets/css-loaders.css</code>（原样照抄，内部规则不改）。这里只通过
+    <code>--cl-*</code> 变量把颜色接到站点 token（<code>--ink / --lime / --green / --line</code>），
+    所以停掉这个页面，主站一点负担都没有。
+  </p>
+
+  <div class="ld-grid">
+    <div class="ld-card">
+      <div class="ld-stage"><div class="cl-glass d-glass"><span></span><span></span></div></div>
+      <div class="ld-name">毛玻璃光球 <em>.cl-glass</em></div>
+      <div class="ld-vars"><b>--cl-size</b> · --cl-color · --cl-color-2 · --cl-duration<br>主站用途：空列表的呼吸光晕（.empty-glow）</div>
+    </div>
+
+    <div class="ld-card">
+      <div class="ld-stage"><span class="cl-typing d-typing" data-text="DUE SOON">DUE SOON</span></div>
+      <div class="ld-name">描边扫描文字 <em>.cl-typing</em></div>
+      <div class="ld-vars"><b>--cl-stroke</b> · --cl-color · --cl-duration<br>用 clip-path 揭示，不动 width</div>
+    </div>
+
+    <div class="ld-card">
+      <div class="ld-stage"><div class="cl-water d-water"><span class="cl-water__wave"></span></div></div>
+      <div class="ld-name">水球 <em>.cl-water</em></div>
+      <div class="ld-vars"><b>--cl-shell</b> · --cl-color · --cl-glass</div>
+    </div>
+
+    <div class="ld-card">
+      <div class="ld-stage"><div class="cl-spinner d-spinner"></div></div>
+      <div class="ld-name">三环旋转 <em>.cl-spinner</em></div>
+      <div class="ld-vars"><b>--cl-size</b> · --cl-color~6<br>单元素 + 伪元素，塞按钮里最省 DOM</div>
+    </div>
+
+    <div class="ld-card">
+      <div class="ld-stage"><div class="cl-clip d-clip"><span>LOADING</span><span>LOADING</span></div></div>
+      <div class="ld-name">上下半字错位 <em>.cl-clip</em></div>
+      <div class="ld-vars"><b>--cl-bg</b> · --cl-color · --cl-size</div>
+    </div>
+
+    <div class="ld-card">
+      <div class="ld-stage"><div class="cl-squares d-squares"><span></span><span></span></div></div>
+      <div class="ld-name">方块接力 <em>.cl-squares</em></div>
+      <div class="ld-vars"><b>--cl-line</b> · --cl-color · --cl-color-2<br>库内唯一用 transition 的组件</div>
+    </div>
+
+    <div class="ld-card">
+      <div class="ld-stage">
+        <div class="cl-countdown d-count">
+          <div class="cl-countdown__dial"></div>
+          <div class="cl-countdown__hand"></div>
+          <ol class="cl-countdown__numbers">
+            <li style="--i:0">3</li><li style="--i:1">2</li><li style="--i:2">1</li>
+          </ol>
+        </div>
+      </div>
+      <div class="ld-name">电影倒计时 <em>.cl-countdown</em></div>
+      <div class="ld-vars"><b>--cl-step</b> · --cl-numbers · --cl-size<br>主站用途：自习室最后 3 秒（.study-countdown）</div>
+    </div>
+
+    <div class="ld-card">
+      <div class="ld-stage"><div class="cl-text-shadow d-shadow"><span style="--i:0">D</span><span style="--i:1">U</span><span style="--i:2">E</span></div></div>
+      <div class="ld-name">字母波浪投影 <em>.cl-text-shadow</em></div>
+      <div class="ld-vars"><b>--cl-shadow</b> · --cl-color<br>延迟 = 周期/12 × --i</div>
+    </div>
+
+    <div class="ld-card">
+      <div class="ld-stage"><div class="cl-counter d-counter" data-cl-counter><div class="cl-counter__bar"></div><div class="cl-counter__num">0%</div></div></div>
+      <div class="ld-name">全屏计数器 <em>.cl-counter</em></div>
+      <div class="ld-vars"><b>data-cl-duration</b> · --cl-track · --cl-num<br>唯一需要 JS（assets/css-loaders.js），跑完派发 cl-counter-done</div>
+    </div>
+
+    <div class="ld-card">
+      <div class="ld-stage"><div class="cl-ripple d-ripple"><span style="--i:0"></span><span style="--i:1"></span><span style="--i:2"></span></div></div>
+      <div class="ld-name">错峰涟漪 <em>.cl-ripple</em></div>
+      <div class="ld-vars"><b>--cl-size</b> · --cl-line · --cl-color<br>加 .cl-ripple--fill 变实心</div>
+    </div>
+  </div>
+
+  <p class="ld-rule">
+    验收口径：每个动效都只动 transform / opacity / clip-path，宽度与位置靠 scale / translate 表达；
+    所有组件都有 <code>prefers-reduced-motion: reduce</code> 降级——系统开了「减少动态效果」时这里会全部静止。
+  </p>
+</div>
+<script src="assets/css-loaders.js"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+# 临时脚本与缓存
+**/_*.py
+__pycache__/
+*.pyc
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 本地预览 / 临时目录
+.dsh-office-*/
+tmp/

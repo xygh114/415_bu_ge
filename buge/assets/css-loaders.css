@@ -1,0 +1,642 @@
+/* =========================================================================
+   css-loaders.css · 十个动效组件（手册 §6 原文，未改动一行）
+   来源：D:/dsh文件/css-loaders-handoff.md §6（B 站 BV1SRUYBeEUj 配套）
+   约定：组件内部不写 body/* reset；类名统一 .cl- 前缀；只动 transform/opacity。
+   站点适配请写在文件末尾「不鸽站适配」一节里，只设 CSS 变量，不改组件规则。
+   ========================================================================= */
+/*!
+ * css-loaders.css — 10 个可参数化的纯 CSS 动效组件
+ *
+ * 原则：
+ *  1. 零依赖，只依赖 CSS 自定义属性；
+ *  2. 不做全局 reset，不碰 body / html / *，所有规则都挂在 .cl-* 根元素之下；
+ *  3. --cl-size 控制整体尺寸，其余尺寸都是它的倍数，改一个数就整体缩放；
+ *  4. 只用 transform / opacity 做动画（例外：倒计时数字与计数器进度条有注释说明）；
+ *  5. 全部提供 prefers-reduced-motion 降级，且降级后有"静止但可读"的最终状态。
+ *
+ * 用法见 README.md，可视化见 index.html。
+ */
+
+/* ==========================================================================
+   01. cl-glass —— 毛玻璃光球（原 02.毛玻璃效果）
+      需要两个 <span>；--ring 变体为"玻璃圆盘 + 旋转色环"
+   ========================================================================== */
+
+.cl-glass {
+  --cl-size: 150px;
+  --cl-color: #5989ff;
+  --cl-color-2: #ff6198;
+  --cl-duration: 2s;
+
+  position: relative;
+  display: inline-block;
+  width: var(--cl-size);
+  height: var(--cl-size);
+}
+
+.cl-glass > span {
+  position: absolute;
+  inset: 0;
+  display: block;
+  border-radius: 50%;
+  background: var(--cl-color);
+  animation: cl-glass-slide var(--cl-duration) ease-in-out infinite;
+}
+
+.cl-glass > span::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--cl-size) * -.2);
+  bottom: calc(var(--cl-size) * -.66);
+  width: calc(var(--cl-size) * 1.4);
+  height: calc(var(--cl-size) * .27);
+  border-radius: 50%;
+  background: radial-gradient(rgb(0 0 0 / .08), transparent 70%);
+}
+
+.cl-glass > span:nth-child(2) {
+  background: color-mix(in srgb, var(--cl-color) 8%, transparent);
+  border: 1px solid rgb(255 255 255 / .35);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  animation-delay: calc(var(--cl-duration) / -2);
+}
+
+@keyframes cl-glass-slide {
+  0%, 100% { transform: translateX(-53%); }
+  50%      { transform: translateX(53%); }
+}
+
+/* 变体：玻璃盘 + 旋转色环 */
+.cl-glass--ring {
+  --cl-size: 180px;
+}
+
+.cl-glass--ring > span:first-child {
+  inset: 0;
+  background: none;
+  border: 0;
+  overflow: hidden;
+  animation: cl-glass-spin 1s linear infinite;
+}
+
+.cl-glass--ring > span:first-child::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 100%;
+  height: 100%;
+  background: var(--cl-color-2);
+}
+
+.cl-glass--ring > span:first-child::after {
+  display: none;
+}
+
+.cl-glass--ring > span:nth-child(2) {
+  inset: calc(var(--cl-size) * .055);
+  z-index: 2;
+  animation: none;
+  background: color-mix(in srgb, var(--cl-color) 6%, transparent);
+  border: 1px solid rgb(255 255 255 / .45);
+}
+
+@keyframes cl-glass-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ==========================================================================
+   02. cl-typing —— 描边文字 + 扫描填充 + 光标（原 03.文本填充效果）
+      文本同时放在 data-text 上，用于生成填充层
+   ========================================================================== */
+
+.cl-typing {
+  --cl-size: clamp(2rem, 9vw, 8rem);
+  --cl-color: #01fe87;
+  --cl-stroke: #383d52;
+  --cl-duration: 6s;
+
+  position: relative;
+  display: inline-block;
+  font-size: var(--cl-size);
+  font-weight: 700;
+  line-height: 1.1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: transparent;
+  -webkit-text-stroke: max(1px, calc(var(--cl-size) / 48)) var(--cl-stroke);
+}
+
+.cl-typing::before,
+.cl-typing::after {
+  position: absolute;
+  inset: 0;
+  clip-path: inset(0 100% 0 0);
+  animation: cl-typing-fill var(--cl-duration) linear infinite;
+}
+
+.cl-typing::before {
+  content: attr(data-text);
+  color: var(--cl-color);
+  -webkit-text-stroke: 0;
+}
+
+/* 光标 = 一条贴着填充边缘的竖线，靠同一个 clip 动画一起走 */
+.cl-typing::after {
+  content: "";
+  border-right: max(2px, calc(var(--cl-size) / 48)) solid var(--cl-color);
+}
+
+@keyframes cl-typing-fill {
+  0%, 10%, 100% { clip-path: inset(0 100% 0 0); }
+  70%, 90%      { clip-path: inset(0 0 0 0); }
+}
+
+/* ==========================================================================
+   03. cl-water —— 水球（原 47.水球）
+      .cl-water__wave 是水面层，两个伪元素反向旋转制造起伏
+   ========================================================================== */
+
+.cl-water {
+  --cl-size: 150px;
+  --cl-color: #4973ff;
+  --cl-shell: #fff;
+  --cl-glass: #ccc;
+  --cl-duration: 5s;
+
+  position: relative;
+  width: var(--cl-size);
+  height: var(--cl-size);
+  overflow: hidden;
+  border: calc(var(--cl-size) / 30) solid var(--cl-shell);
+  border-radius: 50%;
+  background: var(--cl-glass);
+  box-shadow: 0 0 calc(var(--cl-size) / 3) var(--cl-color);
+}
+
+.cl-water__wave {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--cl-color);
+  box-shadow: inset 0 0 calc(var(--cl-size) / 3) rgb(0 0 0 / .5);
+}
+
+.cl-water__wave::before,
+.cl-water__wave::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 200%;
+  height: 200%;
+  transform: translate(-50%, -75%);
+}
+
+.cl-water__wave::before {
+  border-radius: 45%;
+  background: rgb(255 255 255 / 1);
+  animation: cl-water-spin var(--cl-duration) linear infinite;
+}
+
+.cl-water__wave::after {
+  border-radius: 40%;
+  background: rgb(255 255 255 / .5);
+  animation: cl-water-spin calc(var(--cl-duration) * 2) linear infinite;
+}
+
+@keyframes cl-water-spin {
+  from { transform: translate(-50%, -75%) rotate(0deg); }
+  to   { transform: translate(-50%, -75%) rotate(360deg); }
+}
+
+/* ==========================================================================
+   04. cl-spinner —— 三环彩色微调器（原 62.CSS单元素彩色微调器）
+      单元素 + 两个伪元素，三层不同速度反向旋转
+   ========================================================================== */
+
+.cl-spinner {
+  --cl-size: 100px;
+  --cl-color: #fff958;
+  --cl-color-2: #b858ff;
+  --cl-color-3: #e74c3c;
+  --cl-color-4: #3ce7d8;
+  --cl-color-5: #39ff8d;
+  --cl-color-6: #ff67ad;
+  --cl-duration: 2s;
+
+  position: relative;
+  width: var(--cl-size);
+  height: var(--cl-size);
+  border: calc(var(--cl-size) / 25) solid transparent;
+  border-top-color: var(--cl-color-2);
+  border-bottom-color: var(--cl-color);
+  border-radius: 50%;
+  animation: cl-spin var(--cl-duration) linear infinite;
+}
+
+.cl-spinner::before,
+.cl-spinner::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  animation: cl-spin var(--cl-duration) linear infinite;
+}
+
+.cl-spinner::before {
+  inset: 10%;
+  border: calc(var(--cl-size) / 25) solid transparent;
+  border-top-color: var(--cl-color-4);
+  border-bottom-color: var(--cl-color-3);
+}
+
+.cl-spinner::after {
+  inset: 24%;
+  border: calc(var(--cl-size) / 25) solid transparent;
+  border-top-color: var(--cl-color-6);
+  border-bottom-color: var(--cl-color-5);
+  animation-duration: calc(var(--cl-duration) * 2);
+}
+
+@keyframes cl-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ==========================================================================
+   05. cl-clip —— Clip-path 上下镜像滚动的文字（原 66）
+      两个 <span> 各显示一半，方向相反，拼成"无缝循环"
+   ========================================================================== */
+
+.cl-clip {
+  --cl-size: 300px;          /* 整体宽度，高度 = 宽度的 20% */
+  --cl-color: #000;
+  --cl-bg: #ffff3a;
+  --cl-duration: 4s;
+
+  position: relative;
+  width: var(--cl-size);
+  height: calc(var(--cl-size) * .2);
+  overflow: hidden;
+  border: calc(var(--cl-size) / 60) solid var(--cl-color);
+  background: var(--cl-bg);
+  font-family: Verdana, sans-serif;
+  font-weight: 700;
+  font-size: calc(var(--cl-size) * .155);
+  line-height: calc(var(--cl-size) * .2);
+  text-align: center;
+}
+
+.cl-clip > span {
+  position: absolute;
+  inset: 0;
+  color: var(--cl-color);
+  text-transform: uppercase;
+  white-space: nowrap;
+  animation: cl-clip-slide var(--cl-duration) linear infinite;
+}
+
+.cl-clip > span:nth-child(1) {
+  clip-path: polygon(0 0, 100% 0, 100% 50%, 0 50%);
+}
+
+.cl-clip > span:nth-child(2) {
+  clip-path: polygon(0 50%, 100% 50%, 100% 100%, 0 100%);
+  animation-direction: reverse;
+}
+
+@keyframes cl-clip-slide {
+  0%   { transform: translateX(100%); }
+  40%  { transform: translateX(0); }
+  80%  { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
+}
+
+/* ==========================================================================
+   06. cl-squares —— 两个方块接力（原 82.CSS方形动画效果）
+      悬停整体放大，用 transform，不动布局
+   ========================================================================== */
+
+.cl-squares {
+  --cl-size: 50px;            /* 单个方块的边长 */
+  --cl-color: #63b2ed;
+  --cl-color-2: #359dea;
+  --cl-line: #262626;
+  --cl-duration: 1s;
+
+  position: relative;
+  width: calc(var(--cl-size) * 3);
+  height: var(--cl-size);
+  border-bottom: 2px solid var(--cl-line);
+  transform-origin: 50% 100%;
+  transition: transform .3s ease;
+  cursor: pointer;
+}
+
+.cl-squares::before {
+  content: "";
+  position: absolute;
+  top: calc(var(--cl-size) + 2px);
+  left: 0;
+  width: 100%;
+  height: calc(var(--cl-size) * 12);
+  background: var(--cl-color-2);
+  z-index: 0;
+}
+
+.cl-squares:hover {
+  transform: scale(1.6);
+}
+
+.cl-squares > span {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  width: var(--cl-size);
+  height: var(--cl-size);
+  box-sizing: border-box;
+  background: var(--cl-color);
+  border: calc(var(--cl-size) / 12.5) solid var(--cl-line);
+  animation: cl-squares-left var(--cl-duration) linear infinite;
+}
+
+.cl-squares > span:nth-child(2) {
+  left: auto;
+  right: 0;
+  animation-name: cl-squares-right;
+}
+
+@keyframes cl-squares-left {
+  0%   { transform-origin: bottom right; transform: translate(0, 0) rotate(0deg) translateX(0); }
+  50%  { transform-origin: bottom right; transform: translate(0, 0) rotate(90deg) translateX(calc(var(--cl-size) / -2)); }
+  100% { transform-origin: bottom right; transform: translate(0, 0) rotate(90deg) translateY(calc(var(--cl-size) / 2)); }
+}
+
+@keyframes cl-squares-right {
+  0%   { transform-origin: bottom left; transform: translate(0, 0) rotate(0deg) translateX(0); }
+  50%  { transform-origin: bottom left; transform: translate(0, 0) rotate(-90deg); }
+  100% { transform-origin: bottom left; transform: translate(0, 0) rotate(-90deg) translateY(calc(var(--cl-size) / 2)); }
+}
+
+/* ==========================================================================
+   07. cl-countdown —— 老式电影倒计时（原 85）
+      每个数字用 style="--i:n" 指定次序，不再写 nth-child 列表
+   ========================================================================== */
+
+.cl-countdown {
+  --cl-size: 420px;
+  --cl-color: #000;
+  --cl-step: 1s;              /* 每个数字停留多久 */
+  --cl-numbers: 10;
+
+  position: relative;
+  width: var(--cl-size);
+  height: var(--cl-size);
+  overflow: hidden;
+  border-radius: 50%;
+  background: radial-gradient(#fff, #9a9a9a);
+  font-family: sans-serif;
+}
+
+/* 十字准线 */
+.cl-countdown::before,
+.cl-countdown::after {
+  content: "";
+  position: absolute;
+  background: var(--cl-color);
+  opacity: .85;
+}
+
+.cl-countdown::before {
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: calc(var(--cl-size) / 84);
+}
+
+.cl-countdown::after {
+  top: 0;
+  left: 50%;
+  width: calc(var(--cl-size) / 84);
+  height: 100%;
+}
+
+.cl-countdown__dial {
+  position: absolute;
+  inset: 8%;
+  border: calc(var(--cl-size) / 84) solid var(--cl-color);
+  border-radius: 50%;
+}
+
+.cl-countdown__hand {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: calc(var(--cl-size) * 1.05);
+  height: calc(var(--cl-size) / 168 + 2px);
+  background: var(--cl-color);
+  transform-origin: 0 50%;
+  animation: cl-countdown-sweep var(--cl-step) linear infinite;
+}
+
+.cl-countdown__numbers {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cl-countdown__numbers li {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--cl-size) * .42);
+  font-weight: 700;
+  color: var(--cl-color);
+  opacity: 0;
+  animation: cl-countdown-show calc(var(--cl-step) * var(--cl-numbers)) linear infinite;
+  animation-delay: calc(var(--cl-step) * var(--i, 0));
+}
+
+@keyframes cl-countdown-sweep {
+  from { transform: rotate(-90deg); }
+  to   { transform: rotate(270deg); }
+}
+
+/* 十个数字均分一轮：每个数字只在前 10% 亮着（--cl-numbers = 10 时） */
+@keyframes cl-countdown-show {
+  0%, 10%    { opacity: 1; }
+  10.01%, 100% { opacity: 0; }
+}
+
+/* ==========================================================================
+   08. cl-text-shadow —— 字母波浪 + 阴影（原 86）
+      每个字母 style="--i:n"，延迟用 calc() 算，不再写 8 条 nth-child
+   ========================================================================== */
+
+.cl-text-shadow {
+  --cl-size: 5rem;
+  --cl-color: #fff;
+  --cl-shadow: rgb(0 0 0 / .2);
+  --cl-duration: 2.4s;
+
+  display: inline-flex;
+  align-items: center;
+  gap: .15em;
+}
+
+.cl-text-shadow > span {
+  display: inline-block;
+  font: 700 1em / 1 var(--cl-font, sans-serif);
+  font-size: var(--cl-size);
+  color: var(--cl-color);
+  animation: cl-text-shadow-wave var(--cl-duration) linear infinite;
+  animation-delay: calc(var(--cl-duration) / 12 * var(--i, 0));
+}
+
+@keyframes cl-text-shadow-wave {
+  0%        { transform: scale(1);   text-shadow: 0 0 10px transparent; }
+  40%       { transform: scale(1.4); text-shadow: 0 10px 20px var(--cl-shadow); }
+  80%, 100% { transform: scale(1);   text-shadow: 0 0 10px transparent; }
+}
+
+/* ==========================================================================
+   09. cl-counter —— 全屏数字计数器（原 87）
+      进度条用 scaleX 而不是 width；数字用 mix-blend-mode: difference。
+      需要 css-loaders.js（渐进增强：没有 JS 时就停在 0%）
+   ========================================================================== */
+
+.cl-counter {
+  --cl-duration: 8s;
+  --cl-color: #000;
+  --cl-track: #fff;
+  --cl-num: #fff;
+
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: var(--cl-track);
+  transition: opacity .5s linear;
+}
+
+.cl-counter__bar {
+  position: absolute;
+  inset: 0;
+  background: var(--cl-color);
+  transform: scaleX(var(--cl-progress, 0));
+  transform-origin: 0 50%;
+}
+
+.cl-counter__num {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  transform: translate(-50%, -50%);
+  font: 800 15vw / 1 var(--cl-font, sans-serif);
+  text-align: center;
+  color: var(--cl-num);
+  mix-blend-mode: difference;
+}
+
+.cl-counter.is-done {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   10. cl-ripple —— 错峰涟漪（原 107）
+      span 个数就是环数（默认 10 个），style="--i:n" 决定负延迟。
+      动画只动 transform: scale 与 opacity，不触发重排。
+   ========================================================================== */
+
+.cl-ripple {
+  --cl-size: 400px;
+  --cl-color: #fff;
+  --cl-duration: 5s;
+  --cl-line: 2px;
+
+  position: relative;
+  width: var(--cl-size);
+  height: var(--cl-size);
+  display: grid;
+  place-items: center;
+}
+
+.cl-ripple > span {
+  position: absolute;
+  inset: 0;
+  border: var(--cl-line) solid var(--cl-color);
+  border-radius: 50%;
+  transform: scale(0);
+  opacity: 0;
+  animation: cl-ripple-pulse var(--cl-duration) linear infinite;
+  animation-delay: calc(var(--cl-duration) / -10 * var(--i, 0));
+}
+
+/* 实心版本 */
+.cl-ripple--fill > span {
+  border: 0;
+  background: color-mix(in srgb, var(--cl-color) 25%, transparent);
+}
+
+@keyframes cl-ripple-pulse {
+  0%   { transform: scale(0);   opacity: 1; }
+  50%  { transform: scale(.5);  opacity: 1; }
+  100% { transform: scale(1);   opacity: 0; }
+}
+
+/* ==========================================================================
+   降级：系统开了"减少动态效果"时，所有组件停在"可读的静态帧"
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .cl-glass > span,
+  .cl-glass--ring > span:first-child,
+  .cl-typing::before,
+  .cl-typing::after,
+  .cl-water__wave::before,
+  .cl-water__wave::after,
+  .cl-spinner,
+  .cl-spinner::before,
+  .cl-spinner::after,
+  .cl-clip > span,
+  .cl-squares > span,
+  .cl-countdown__hand,
+  .cl-countdown__numbers li,
+  .cl-text-shadow > span,
+  .cl-ripple > span {
+    animation: none !important;
+  }
+
+  .cl-glass > span { transform: none; }
+  .cl-glass--ring > span:first-child { transform: rotate(45deg); }
+
+  .cl-typing::before,
+  .cl-typing::after { clip-path: inset(0); }
+
+  .cl-water__wave::before { transform: translate(-50%, -75%) rotate(20deg); }
+  .cl-water__wave::after { transform: translate(-50%, -75%) rotate(-15deg); }
+
+  .cl-clip > span:nth-child(1) { transform: none; }
+  .cl-clip > span:nth-child(2) { transform: none; }
+
+  .cl-squares { transition: none; }
+
+  .cl-countdown__numbers li { opacity: 0; }
+  .cl-countdown__numbers li:first-child { opacity: 1; }
+
+  .cl-text-shadow > span { transform: none; }
+
+  .cl-ripple > span { transform: scale(0); }
+  .cl-ripple > span:nth-child(1) { opacity: .9; transform: scale(1); }
+  .cl-ripple > span:nth-child(2) { opacity: .45; transform: scale(.66); }
+  .cl-ripple > span:nth-child(3) { opacity: .2; transform: scale(.33); }
+
+  .cl-counter__bar { transform: scaleX(1); }
+  .cl-counter { opacity: 1; }
+}
